@@ -1,0 +1,2450 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Science Teacher MVP Demo</title>
+  <style>
+    :root{
+      --bg:#07111f;
+      --panel:rgba(10,24,42,.72);
+      --panel-strong:rgba(7,19,33,.88);
+      --panel-line:rgba(255,255,255,.09);
+      --text:#f4f7fb;
+      --muted:rgba(233,239,247,.7);
+      --accent:#43d0bc;
+      --accent-soft:rgba(67,208,188,.18);
+      --accent-glow:rgba(67,208,188,.38);
+      --warning:#f2c46e;
+      --error:#ff7d6b;
+      --shadow:0 24px 80px rgba(0,0,0,.34);
+      --radius-xl:32px;
+      --radius-lg:24px;
+      --radius-md:18px;
+      --radius-sm:999px;
+      --transition:220ms ease;
+      --page-width:min(1440px, calc(100vw - 48px));
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+    body{
+      font-family:"Avenir Next","PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;
+      overflow-x:hidden;
+    }
+
+    body::before,
+    body::after{
+      content:"";
+      position:fixed;
+      inset:auto;
+      pointer-events:none;
+      z-index:0;
+      filter:blur(24px);
+    }
+
+    body::before{
+      top:-12vh;
+      right:-10vw;
+      width:38vw;
+      height:38vw;
+      background:radial-gradient(circle, rgba(67,208,188,.18), transparent 66%);
+    }
+
+    body::after{
+      left:-14vw;
+      bottom:-12vh;
+      width:36vw;
+      height:36vw;
+      background:radial-gradient(circle, rgba(242,196,110,.12), transparent 68%);
+    }
+
+    .app-shell{
+      position:relative;
+      min-height:100vh;
+      padding:24px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:background var(--transition);
+    }
+
+    .app-shell[data-state="idle"]{--accent:#43d0bc;--accent-soft:rgba(67,208,188,.18);--accent-glow:rgba(67,208,188,.36)}
+    .app-shell[data-state="listening"]{--accent:#5ce4c6;--accent-soft:rgba(92,228,198,.22);--accent-glow:rgba(92,228,198,.48)}
+    .app-shell[data-state="thinking"]{--accent:#f2c46e;--accent-soft:rgba(242,196,110,.18);--accent-glow:rgba(242,196,110,.34)}
+    .app-shell[data-state="answering"]{--accent:#7fd5ff;--accent-soft:rgba(127,213,255,.20);--accent-glow:rgba(127,213,255,.34)}
+    .app-shell[data-state="error"]{--accent:#ff7d6b;--accent-soft:rgba(255,125,107,.18);--accent-glow:rgba(255,125,107,.36)}
+
+    .backdrop-grid{
+      position:absolute;
+      inset:0;
+      z-index:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size:48px 48px;
+      mask-image:linear-gradient(to bottom, rgba(0,0,0,.8), transparent 88%);
+      opacity:.5;
+    }
+
+    .frame{
+      position:relative;
+      z-index:1;
+      width:var(--page-width);
+      display:grid;
+      gap:18px;
+    }
+
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid var(--panel-line);
+      border-radius:var(--radius-xl);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(24px);
+    }
+
+    .hero{
+      padding:22px 22px 18px;
+      background:
+        radial-gradient(circle at top right, var(--accent-soft), transparent 40%),
+        linear-gradient(180deg, rgba(11,29,51,.92), rgba(7,19,34,.92));
+    }
+
+    .hero-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:18px;
+    }
+
+    .brand-block{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .eyebrow{
+      font-size:12px;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    .brand-title{
+      font-size:clamp(24px, 3vw, 36px);
+      font-weight:700;
+      line-height:1.05;
+      letter-spacing:.02em;
+    }
+
+    .brand-subtitle{
+      color:var(--muted);
+      font-size:15px;
+      max-width:68ch;
+      line-height:1.6;
+    }
+
+    .state-pill{
+      flex:0 0 auto;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 18px;
+      border-radius:var(--radius-sm);
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      font-size:15px;
+      font-weight:700;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+
+    .state-dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 0 8px var(--accent-soft), 0 0 16px var(--accent-glow);
+      animation:pulse-dot 1.8s ease-in-out infinite;
+    }
+
+    .hero-main{
+      display:grid;
+      grid-template-columns:minmax(320px, 420px) minmax(0, 1fr);
+      gap:20px;
+      align-items:stretch;
+    }
+
+    .avatar-panel{
+      position:relative;
+      min-height:440px;
+      border-radius:28px;
+      border:1px solid rgba(255,255,255,.08);
+      background:
+        radial-gradient(circle at 50% 12%, rgba(127,213,255,.14), transparent 28%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)),
+        linear-gradient(180deg, rgba(10,25,44,.96), rgba(7,18,31,.92));
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .avatar-panel::before{
+      content:"";
+      position:absolute;
+      inset:18px;
+      border-radius:26px;
+      border:1px solid rgba(255,255,255,.05);
+      pointer-events:none;
+    }
+
+    .avatar-panel-head{
+      position:absolute;
+      top:22px;
+      left:22px;
+      right:22px;
+      z-index:3;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      pointer-events:none;
+    }
+
+    .teacher-identity{
+      display:grid;
+      gap:4px;
+      padding:12px 14px;
+      border-radius:18px;
+      border:1px solid rgba(127,213,255,.15);
+      background:rgba(6,16,28,.62);
+      box-shadow:0 10px 30px rgba(0,0,0,.22);
+      backdrop-filter:blur(14px);
+    }
+
+    .teacher-identity-label{
+      font-size:11px;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      color:rgba(233,239,247,.68);
+    }
+
+    .teacher-identity-name{
+      font-size:16px;
+      font-weight:700;
+      letter-spacing:.02em;
+      color:#f6fbff;
+    }
+
+    .teacher-mode{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.05);
+      color:rgba(233,239,247,.78);
+      font-size:12px;
+      line-height:1;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .avatar-aura,
+    .avatar-aura::after{
+      position:absolute;
+      inset:auto;
+      border-radius:50%;
+      pointer-events:none;
+      content:"";
+    }
+
+    .avatar-aura{
+      width:300px;
+      height:360px;
+      background:radial-gradient(circle at 50% 28%, rgba(127,213,255,.18), transparent 62%);
+      filter:blur(10px);
+      animation:teacher-halo 9s ease-in-out infinite;
+    }
+
+    .avatar-aura::after{
+      inset:-18px;
+      border:1px solid rgba(255,255,255,.06);
+      box-shadow:0 0 0 1px rgba(255,255,255,.02), 0 0 20px rgba(127,213,255,.18);
+      animation:teacher-ring 7.5s ease-in-out infinite;
+    }
+
+    .avatar{
+      position:relative;
+      width:332px;
+      height:380px;
+      border-radius:30px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)),
+        radial-gradient(circle at 50% 18%, rgba(255,255,255,.12), transparent 30%),
+        linear-gradient(180deg, rgba(23,39,61,.94), rgba(18,31,49,.9));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 20px 50px rgba(0,0,0,.25);
+      animation:teacher-float 8.5s ease-in-out infinite;
+    }
+
+    .avatar-viewport{
+      position:relative;
+      width:232px;
+      height:calc(100% - 34px);
+      border-radius:28px;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.015)),
+        radial-gradient(circle at 50% 12%, rgba(255,255,255,.1), transparent 30%),
+        linear-gradient(180deg, rgba(27,43,64,.98), rgba(17,29,47,.95));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04), inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .avatar-render-layer{
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:1;
+    }
+
+    .avatar-viewport::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      z-index:3;
+      pointer-events:none;
+      background:
+        radial-gradient(ellipse 28% 54% at 0% 70%, rgba(10,16,29,.94), transparent 76%),
+        radial-gradient(ellipse 28% 54% at 100% 70%, rgba(10,16,29,.94), transparent 76%),
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0) 18%),
+        linear-gradient(180deg, rgba(255,255,255,0), rgba(6,10,18,.08));
+    }
+
+    .avatar::before,
+    .avatar::after{
+      content:"";
+      position:absolute;
+      pointer-events:none;
+    }
+
+    .avatar::before{
+      inset:14px 14px auto;
+      height:52px;
+      border-radius:18px;
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0));
+    }
+
+    .avatar::after{
+      inset:0;
+      border-radius:inherit;
+      border:1px solid rgba(255,255,255,.05);
+    }
+
+    .face{
+      position:relative;
+      z-index:1;
+      width:236px;
+      height:236px;
+      border-radius:120px;
+      background:linear-gradient(180deg, #f8d9c2, #f1c6ab);
+      box-shadow:inset 0 -8px 20px rgba(165,98,68,.18);
+    }
+
+    .face::before,
+    .face::after{
+      content:"";
+      position:absolute;
+      top:128px;
+      width:34px;
+      height:18px;
+      border-radius:999px;
+      background:rgba(222,102,102,.14);
+      filter:blur(2px);
+    }
+
+    .face::before{left:38px}
+    .face::after{right:38px}
+
+    .eye{
+      position:absolute;
+      top:82px;
+      width:34px;
+      height:16px;
+      border-radius:12px;
+      background:#1f2430;
+      transform-origin:center center;
+      animation:blink 6.2s ease-in-out infinite;
+    }
+
+    .eye.l{left:64px}
+    .eye.r{right:64px;animation-delay:.18s}
+
+    .mouth{
+      position:absolute;
+      left:50%;
+      top:150px;
+      transform:translateX(-50%);
+      width:92px;
+      height:16px;
+      border-radius:18px;
+      background:linear-gradient(180deg, #9f3041, #7b1d2f);
+      box-shadow:inset 0 2px 4px rgba(255,255,255,.15), inset 0 -3px 6px rgba(55,8,15,.28);
+      will-change:height,transform,border-radius;
+    }
+
+    .status-panel{
+      display:grid;
+      gap:16px;
+      align-content:start;
+    }
+
+    .status-card{
+      border-radius:28px;
+      padding:22px 22px 20px;
+      background:linear-gradient(180deg, rgba(7,20,35,.88), rgba(10,23,41,.72));
+      border:1px solid rgba(255,255,255,.07);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .status-label{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      color:var(--muted);
+      font-size:13px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      margin-bottom:12px;
+    }
+
+    .status-copy{
+      font-size:clamp(28px, 4vw, 46px);
+      line-height:1.08;
+      font-weight:750;
+      letter-spacing:.01em;
+      margin-bottom:10px;
+      text-wrap:balance;
+    }
+
+    .status-detail{
+      color:var(--muted);
+      font-size:16px;
+      line-height:1.7;
+      min-height:3.4em;
+    }
+
+    .stage-track{
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      gap:10px;
+    }
+
+    .stage-step{
+      position:relative;
+      padding:14px 12px 12px;
+      border-radius:18px;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      color:rgba(255,255,255,.56);
+      font-size:14px;
+      font-weight:600;
+      text-align:center;
+      transition:transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+    }
+
+    .stage-step::before{
+      content:"";
+      display:block;
+      width:10px;
+      height:10px;
+      margin:0 auto 10px;
+      border-radius:50%;
+      background:rgba(255,255,255,.18);
+      transition:background var(--transition), box-shadow var(--transition);
+    }
+
+    .stage-step.is-done,
+    .stage-step.is-active{
+      color:var(--text);
+      border-color:rgba(255,255,255,.12);
+    }
+
+    .stage-step.is-done{
+      background:rgba(255,255,255,.05);
+    }
+
+    .stage-step.is-done::before{
+      background:rgba(255,255,255,.8);
+    }
+
+    .stage-step.is-active{
+      background:linear-gradient(180deg, var(--accent-soft), rgba(255,255,255,.04));
+      transform:translateY(-2px);
+      box-shadow:0 10px 28px rgba(0,0,0,.2);
+    }
+
+    .stage-step.is-active::before{
+      background:var(--accent);
+      box-shadow:0 0 0 10px var(--accent-soft), 0 0 16px var(--accent-glow);
+    }
+
+    .meta-row,
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+    }
+
+    .meta-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 14px;
+      border-radius:18px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.4;
+    }
+
+    .meta-chip strong{
+      color:var(--text);
+      font-weight:700;
+    }
+
+    .actions{
+      margin-top:2px;
+    }
+
+    button{
+      appearance:none;
+      border:none;
+      border-radius:16px;
+      padding:14px 18px;
+      font:inherit;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform var(--transition), opacity var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    button:hover{transform:translateY(-1px)}
+    button:disabled{opacity:.65;cursor:wait;transform:none}
+
+    .btn-primary{
+      color:#072030;
+      background:linear-gradient(180deg, #7de7d3, #4fcdb6);
+      box-shadow:0 14px 30px rgba(67,208,188,.26);
+    }
+
+    .btn-secondary{
+      color:var(--text);
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+    }
+
+    .subtitle-grid{
+      display:grid;
+      grid-template-columns:minmax(0, .9fr) minmax(0, 1.25fr);
+      gap:18px;
+    }
+
+    .subtitle-card{
+      padding:18px 20px 20px;
+      background:
+        linear-gradient(180deg, rgba(8,20,35,.88), rgba(6,17,29,.84));
+    }
+
+    .panel-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .panel-title{
+      font-size:17px;
+      font-weight:700;
+      letter-spacing:.01em;
+    }
+
+    .panel-meta{
+      color:var(--muted);
+      font-size:13px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+      white-space:nowrap;
+    }
+
+    .rich-text{
+      min-height:170px;
+      color:#f7fbff;
+      font-size:clamp(20px, 2.1vw, 30px);
+      line-height:1.78;
+      letter-spacing:.01em;
+    }
+
+    .question-text{
+      min-height:140px;
+      font-size:clamp(22px, 2vw, 30px);
+    }
+
+    .question-text .lead{
+      font-size:1.08em;
+      font-weight:700;
+      line-height:1.6;
+      color:#fcfeff;
+    }
+
+    .answer-text{
+      font-size:clamp(20px, 1.85vw, 27px);
+    }
+
+    .rich-text p{
+      margin:0 0 .85em;
+    }
+
+    .rich-text p:last-child{margin-bottom:0}
+
+    .rich-list{
+      margin:.2em 0 1em 1.25em;
+      padding:0;
+    }
+
+    .rich-list li{
+      margin:0 0 .45em;
+      padding-left:.22em;
+    }
+
+    .placeholder{
+      color:rgba(255,255,255,.42);
+    }
+
+    .app-shell[data-state="error"] .status-card,
+    .app-shell[data-state="error"] .subtitle-card{
+      border-color:rgba(255,125,107,.25);
+    }
+
+    .app-shell[data-state="error"] .status-copy{
+      color:#ffe3de;
+    }
+
+    .app-shell[data-state="listening"] .avatar-aura::after,
+    .app-shell[data-state="thinking"] .avatar-aura::after,
+    .app-shell[data-state="answering"] .avatar-aura::after{
+      animation-duration:5.8s;
+    }
+
+    @keyframes pulse-dot{
+      0%,100%{transform:scale(1);opacity:.95}
+      50%{transform:scale(1.18);opacity:1}
+    }
+
+    @keyframes pulse-ring{
+      0%,100%{transform:scale(1);opacity:.65}
+      50%{transform:scale(1.06);opacity:1}
+    }
+
+    @keyframes teacher-float{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-3px)}
+    }
+
+    @keyframes teacher-halo{
+      0%,100%{transform:translateY(0) scale(1)}
+      50%{transform:translateY(-5px) scale(1.02)}
+    }
+
+    @keyframes teacher-ring{
+      0%,100%{transform:scale(1);opacity:.52}
+      50%{transform:scale(1.02);opacity:.82}
+    }
+
+    @keyframes blink{
+      0%, 44%, 48%, 100%{transform:scaleY(1)}
+      45%, 47%{transform:scaleY(.14)}
+    }
+
+    @media (max-width: 1160px){
+      .hero-main,
+      .subtitle-grid{
+        grid-template-columns:1fr;
+      }
+
+      .avatar-panel{min-height:360px}
+      .hero-top{align-items:flex-start;flex-direction:column}
+      .state-pill{align-self:flex-start}
+    }
+
+    @media (max-width: 720px){
+      .app-shell{padding:16px}
+      .hero,
+      .subtitle-card{padding:16px}
+      .stage-track{grid-template-columns:repeat(2, minmax(0, 1fr))}
+      .avatar-panel-head{
+        top:16px;
+        left:16px;
+        right:16px;
+        flex-direction:column;
+        align-items:flex-start;
+      }
+      .avatar{width:292px;height:342px}
+      .avatar-viewport{width:208px;height:calc(100% - 24px)}
+      .face{width:214px;height:214px}
+      .rich-text{min-height:auto}
+      .status-copy{font-size:28px}
+    }
+  </style>
+</head>
+<body>
+<div id="appShell" class="app-shell" data-state="idle">
+  <div class="backdrop-grid"></div>
+
+  <main class="frame">
+    <section class="panel hero">
+      <div class="hero-top">
+        <div class="brand-block">
+          <div class="eyebrow">Science Teacher Demo</div>
+          <div class="brand-title">AI 科学老师实时演示</div>
+        </div>
+
+        <div id="stateBadge" class="state-pill">
+          <span class="state-dot"></span>
+          <span id="stateBadgeText">待机中</span>
+        </div>
+      </div>
+
+      <div class="hero-main">
+        <div class="avatar-panel">
+          <div class="avatar-panel-head">
+            <div class="teacher-identity">
+              <div class="teacher-identity-label">AI Teaching Assistant</div>
+              <div class="teacher-identity-name">AI 科学讲解老师</div>
+            </div>
+            <div class="teacher-mode">课堂讲解模式</div>
+          </div>
+          <div class="avatar-aura"></div>
+          <div class="avatar">
+            <div class="avatar-viewport">
+              <div class="avatar-render-layer">
+                <div class="face">
+                  <div class="eye l"></div>
+                  <div class="eye r"></div>
+                  <div id="mouth" class="mouth"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-panel">
+          <div class="status-card">
+            <div class="status-label">
+              <span>Live Runtime State</span>
+              <span id="statusClock">--:--:--</span>
+            </div>
+            <div id="status" class="status-copy">待机中 / Idle</div>
+            <div id="statusDetail" class="status-detail">等待唤醒词“Alexa”，或点击手动按钮开始提问。</div>
+          </div>
+
+          <div class="stage-track">
+            <div class="stage-step is-active" data-stage="idle">待机</div>
+            <div class="stage-step" data-stage="listening">聆听</div>
+            <div class="stage-step" data-stage="thinking">思考</div>
+            <div class="stage-step" data-stage="answering">回答</div>
+            <div class="stage-step" data-stage="error">异常</div>
+          </div>
+
+          <div class="meta-row">
+            <div class="meta-chip"><strong>唤醒词</strong> Alexa</div>
+            <div class="meta-chip"><strong>音频输出</strong> 后端本机播放优先</div>
+            <div class="meta-chip"><strong>手动回退</strong> 点击“麦克风提问”</div>
+          </div>
+
+          <div class="actions">
+            <button id="demoBtn" class="btn-primary">麦克风提问</button>
+            <button id="mouthBtn" class="btn-secondary">测试嘴型动画</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="subtitle-grid">
+      <article class="panel subtitle-card">
+        <div class="panel-head">
+          <div class="panel-title">识别到的问题</div>
+          <div id="questionMeta" class="panel-meta">实时提问</div>
+        </div>
+        <div id="q" class="rich-text question-text"></div>
+      </article>
+
+      <article class="panel subtitle-card">
+        <div class="panel-head">
+          <div class="panel-title">老师回答字幕</div>
+          <div id="answerMeta" class="panel-meta">实时回答</div>
+        </div>
+        <div id="a" class="rich-text answer-text"></div>
+      </article>
+    </section>
+  </main>
+</div>
+
+<script src="/static/vendor/live2d/live2d.min.js"></script>
+<script src="/static/vendor/live2d/pixi.min.js"></script>
+<script src="/static/vendor/live2d/pixi-live2d.min.js"></script>
+<script>
+  const shellEl = document.getElementById("appShell");
+  const mouth = document.getElementById("mouth");
+  const statusEl = document.getElementById("status");
+  const statusDetailEl = document.getElementById("statusDetail");
+  const statusClockEl = document.getElementById("statusClock");
+  const stateBadgeTextEl = document.getElementById("stateBadgeText");
+  const qEl = document.getElementById("q");
+  const aEl = document.getElementById("a");
+  const questionMetaEl = document.getElementById("questionMeta");
+  const answerMetaEl = document.getElementById("answerMeta");
+  const demoBtn = document.getElementById("demoBtn");
+  const mouthBtn = document.getElementById("mouthBtn");
+  const stageSteps = Array.from(document.querySelectorAll(".stage-step"));
+
+  const STATE_COPY = {
+    idle: {
+      badge: "待机中",
+      message: "待机中 / Idle",
+      detail: "等待唤醒词“Alexa”，或点击手动按钮开始提问。",
+    },
+    listening: {
+      badge: "正在聆听",
+      message: "正在听你说话 / Listening...",
+      detail: "正在采集语音，请保持自然语速并尽量减少环境噪声。",
+    },
+    thinking: {
+      badge: "思考中",
+      message: "正在思考回答 / Thinking...",
+      detail: "正在完成语音转写、知识检索与回答生成。",
+    },
+    answering: {
+      badge: "回答中",
+      message: "正在回答 / Answering...",
+      detail: "正在播放真实回答音频，并同步展示字幕。",
+    },
+    error: {
+      badge: "出现问题",
+      message: "流程异常 / Error",
+      detail: "请查看后端日志并重试，必要时可使用手动按钮触发。",
+    },
+  };
+
+  const QUESTION_TYPE_LABELS = {
+    concept: "概念题",
+    why: "原因题",
+    how: "过程题",
+    compare: "比较题",
+    safety: "安全提示",
+    system: "系统提示",
+    unknown: "实时提问",
+  };
+
+  let animating = false;
+  let animationInterval = null;
+  let mouthRenderFrame = null;
+  let reactiveFrame = null;
+  let mouthCurrentHeight = 16;
+  let mouthTargetHeight = 16;
+  let ws = null;
+  let wsReconnectTimer = null;
+  let wsReconnectDelayMs = 1000;
+  let pollTimer = null;
+  let latestSeenTs = 0;
+  let latestPayloadSyncKey = "";
+  let initialPayloadLoaded = false;
+  let answerPlaybackInFlight = false;
+  let audioUnlocked = false;
+  let pendingAnswerTs = null;
+  let pendingAnswerPayload = null;
+  let handledAnswerReadyTs = 0;
+  let playbackSessionId = 0;
+  let activeAudio = null;
+  let audioContext = null;
+  let activeSource = null;
+  let activeAnalyser = null;
+  let activeSpeechUtterance = null;
+  let activeSpeechRole = null;
+  let speechVoices = [];
+  const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const browserSpeechRecognitionSupported = Boolean(SpeechRecognitionClass);
+  let activeQuestionRecognition = null;
+  let questionRecognitionSessionId = 0;
+  let live2dVisualState = "idle";
+  let live2dDesiredMouthOpen = 0;
+  let live2dSpeechEnergy = 0;
+  let live2dFrameLoopRegistered = false;
+  const live2dFaceCurrent = {
+    mouthForm: 0,
+    cheek: 0,
+    browY: 0,
+    browAngle: 0,
+    eyeForm: 0,
+    eyeBallY: 0,
+  };
+
+  const PREFERRED_ZH_VOICE_HINTS = [
+    "xiaoxiao",
+    "tingting",
+    "ting-ting",
+    "xiaoyi",
+    "xiaomei",
+    "female",
+    "woman",
+    "girl",
+  ];
+
+  const LIVE2D_TEACHER_PRESENTATION = {
+    framingScaleMultiplier: 3.45,
+    xRatio: 0.5,
+    yRatio: 1.18,
+    idleAngleX: 0.9,
+    idleAngleY: 0.42,
+    idleAngleZ: 0.3,
+    idleBodyAngleX: 0.45,
+    breathCenter: 0.48,
+    breathAmplitude: 0.035,
+    blinkInterval: 6200,
+    blinkClosingDuration: 75,
+    blinkClosedDuration: 45,
+    blinkOpeningDuration: 120,
+    mouthScale: 0.78,
+  };
+
+  const LIVE2D_MOUTH_PARAM_IDS = [
+    "PARAM_MOUTH_OPEN_Y",
+    "PARAM_MOUTH_OPEN",
+    "param_mouth_open",
+  ];
+
+  const LIVE2D_MOUTH_FORM_PARAM_IDS = ["PARAM_MOUTH_FORM"];
+  const LIVE2D_CHEEK_PARAM_IDS = ["PARAM_CHEEK"];
+  const LIVE2D_BROW_L_Y_PARAM_IDS = ["PARAM_BROW_L_Y"];
+  const LIVE2D_BROW_R_Y_PARAM_IDS = ["PARAM_BROW_R_Y"];
+  const LIVE2D_BROW_L_ANGLE_PARAM_IDS = ["PARAM_BROW_L_ANGLE"];
+  const LIVE2D_BROW_R_ANGLE_PARAM_IDS = ["PARAM_BROW_R_ANGLE"];
+  const LIVE2D_EYE_FORM_PARAM_IDS = ["PARAM_EYE_FORM"];
+  const LIVE2D_EYE_BALL_Y_PARAM_IDS = ["PARAM_EYE_BALL_Y"];
+
+  function setLive2DParamValue(paramIds, value) {
+    const coreModel = live2dModel?.internalModel?.coreModel;
+    if (!coreModel) return false;
+
+    for (const paramId of paramIds) {
+      try {
+        const paramIndex = coreModel.getParamIndex?.(paramId);
+        if (typeof paramIndex === "number" && paramIndex >= 0) {
+          coreModel.setParamFloat(paramId, value);
+          return true;
+        }
+      } catch (_) {}
+
+      try {
+        coreModel.setParamFloat(paramId, value);
+        return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  function setLive2DMouthOpen(value) {
+    const normalized = Math.max(0, Math.min(1, value));
+    return setLive2DParamValue(LIVE2D_MOUTH_PARAM_IDS, normalized);
+  }
+
+  function setLive2DVisualMode(stateKey) {
+    live2dVisualState = STATE_COPY[stateKey] ? stateKey : "idle";
+    if (live2dVisualState !== "answering") {
+      live2dSpeechEnergy *= 0.55;
+    }
+  }
+
+  function getLive2DFaceTargets() {
+    const speakingBoost = Math.max(0, Math.min(1, live2dSpeechEnergy));
+    switch (live2dVisualState) {
+      case "listening":
+        return {
+          mouthForm: 0.16,
+          cheek: 0.05,
+          browY: 0.12,
+          browAngle: 0.08,
+          eyeForm: 0.18,
+          eyeBallY: -0.04,
+        };
+      case "thinking":
+        return {
+          mouthForm: -0.12,
+          cheek: 0,
+          browY: 0.22,
+          browAngle: 0.18,
+          eyeForm: 0.1,
+          eyeBallY: -0.12,
+        };
+      case "answering":
+        return {
+          mouthForm: 0.18 + speakingBoost * 0.28,
+          cheek: 0.1 + speakingBoost * 0.24,
+          browY: 0.1,
+          browAngle: 0.05,
+          eyeForm: 0.24,
+          eyeBallY: -0.02,
+        };
+      case "error":
+        return {
+          mouthForm: -0.28,
+          cheek: 0,
+          browY: 0.3,
+          browAngle: -0.06,
+          eyeForm: -0.12,
+          eyeBallY: 0.02,
+        };
+      default:
+        return {
+          mouthForm: 0.06,
+          cheek: 0.03,
+          browY: 0.03,
+          browAngle: 0,
+          eyeForm: 0.12,
+          eyeBallY: 0,
+        };
+    }
+  }
+
+  function applyLive2DFaceState() {
+    if (!live2dModel?.internalModel?.coreModel) return;
+
+    const targets = getLive2DFaceTargets();
+    live2dSpeechEnergy *= live2dVisualState === "answering" ? 0.9 : 0.72;
+
+    for (const key of Object.keys(live2dFaceCurrent)) {
+      live2dFaceCurrent[key] += (targets[key] - live2dFaceCurrent[key]) * 0.18;
+    }
+
+    setLive2DMouthOpen(live2dDesiredMouthOpen);
+    setLive2DParamValue(LIVE2D_MOUTH_FORM_PARAM_IDS, live2dFaceCurrent.mouthForm);
+    setLive2DParamValue(LIVE2D_CHEEK_PARAM_IDS, live2dFaceCurrent.cheek);
+    setLive2DParamValue(LIVE2D_BROW_L_Y_PARAM_IDS, live2dFaceCurrent.browY);
+    setLive2DParamValue(LIVE2D_BROW_R_Y_PARAM_IDS, live2dFaceCurrent.browY);
+    setLive2DParamValue(LIVE2D_BROW_L_ANGLE_PARAM_IDS, live2dFaceCurrent.browAngle);
+    setLive2DParamValue(LIVE2D_BROW_R_ANGLE_PARAM_IDS, live2dFaceCurrent.browAngle);
+    setLive2DParamValue(LIVE2D_EYE_FORM_PARAM_IDS, live2dFaceCurrent.eyeForm);
+    setLive2DParamValue(LIVE2D_EYE_BALL_Y_PARAM_IDS, live2dFaceCurrent.eyeBallY);
+  }
+
+  function registerLive2DFrameLoop() {
+    if (!live2dApp || live2dFrameLoopRegistered) return;
+    live2dFrameLoopRegistered = true;
+    live2dApp.ticker.add(() => {
+      applyLive2DFaceState();
+    });
+  }
+
+  function applyTeacherLive2DPresentation(model) {
+    const internalModel = model?.internalModel;
+    if (!internalModel?.coreModel) return;
+
+    model.interactive = false;
+    if ("autoInteract" in model) {
+      model.autoInteract = false;
+    }
+    internalModel.focusController?.focus?.(0, 0, true);
+
+    if (internalModel.eyeBlink) {
+      internalModel.eyeBlink.blinkInterval = LIVE2D_TEACHER_PRESENTATION.blinkInterval;
+      internalModel.eyeBlink.closingDuration = LIVE2D_TEACHER_PRESENTATION.blinkClosingDuration;
+      internalModel.eyeBlink.closedDuration = LIVE2D_TEACHER_PRESENTATION.blinkClosedDuration;
+      internalModel.eyeBlink.openingDuration = LIVE2D_TEACHER_PRESENTATION.blinkOpeningDuration;
+    }
+
+    internalModel.updateNaturalMovements = function(deltaMS, elapsedMS) {
+      const seconds = elapsedMS / 1000;
+      this.coreModel.addToParamFloat(this.angleXParamIndex, Math.sin(seconds * 0.52) * LIVE2D_TEACHER_PRESENTATION.idleAngleX);
+      this.coreModel.addToParamFloat(this.angleYParamIndex, Math.sin(seconds * 0.37) * LIVE2D_TEACHER_PRESENTATION.idleAngleY);
+      this.coreModel.addToParamFloat(this.angleZParamIndex, Math.sin(seconds * 0.29) * LIVE2D_TEACHER_PRESENTATION.idleAngleZ);
+      this.coreModel.addToParamFloat(this.bodyAngleXParamIndex, Math.sin(seconds * 0.41) * LIVE2D_TEACHER_PRESENTATION.idleBodyAngleX);
+      this.coreModel.setParamFloat(
+        this.breathParamIndex,
+        LIVE2D_TEACHER_PRESENTATION.breathCenter + Math.sin(seconds * 0.34) * LIVE2D_TEACHER_PRESENTATION.breathAmplitude
+      );
+    };
+  }
+
+  function setMouthHeight(h) {
+    const clamped = Math.max(12, Math.min(56, h));
+    const scaleX = 1 + Math.max(0, clamped - 16) / 150;
+    const radius = Math.max(10, 22 - Math.max(0, clamped - 16) / 3);
+    mouth.style.height = clamped + "px";
+    mouth.style.transform = "translateX(-50%) scaleX(" + scaleX.toFixed(3) + ")";
+    mouth.style.borderRadius = radius + "px";
+  }
+
+  function ensureMouthRenderLoop() {
+    if (mouthRenderFrame) return;
+    const tick = () => {
+      const delta = mouthTargetHeight - mouthCurrentHeight;
+      mouthCurrentHeight += delta * 0.24;
+      setMouthHeight(mouthCurrentHeight);
+
+      if (animating || Math.abs(delta) > 0.35) {
+        mouthRenderFrame = requestAnimationFrame(tick);
+      } else {
+        mouthRenderFrame = null;
+      }
+    };
+    mouthRenderFrame = requestAnimationFrame(tick);
+  }
+
+  function setMouthTarget(h) {
+    mouthTargetHeight = h;
+    const live2dOpen = Math.max(0, Math.min(1, (h - 16) / 30)) * LIVE2D_TEACHER_PRESENTATION.mouthScale;
+    live2dDesiredMouthOpen = live2dOpen;
+    live2dSpeechEnergy = Math.max(live2dSpeechEnergy * 0.78, live2dOpen);
+    setLive2DMouthOpen(live2dOpen);
+    ensureMouthRenderLoop();
+  }
+
+  function startSyntheticSpeechAnimation(kind = "answer") {
+    stopFakeMouthAnimation();
+    animating = true;
+
+    const seq = kind === "ack"
+      ? [16, 24, 19, 28, 18, 23, 17, 16]
+      : [16, 30, 22, 38, 18, 34, 24, 40, 20, 36, 18, 32, 22, 28];
+    let i = 0;
+
+    animationInterval = setInterval(() => {
+      const base = seq[i % seq.length];
+      const jitter = (Math.random() * 6) - 3;
+      const emphasis = kind === "answer" && i % 3 === 1 ? 6 : 0;
+      setMouthTarget(base + jitter + emphasis);
+      i += 1;
+    }, kind === "ack" ? 95 : 82);
+  }
+
+  function stopFakeMouthAnimation() {
+    animating = false;
+    if (animationInterval) clearInterval(animationInterval);
+    animationInterval = null;
+    if (reactiveFrame) cancelAnimationFrame(reactiveFrame);
+    reactiveFrame = null;
+    if (mouthRenderFrame) cancelAnimationFrame(mouthRenderFrame);
+    mouthRenderFrame = null;
+    if (activeSource) {
+      activeAnalyser = null;
+    }
+    live2dSpeechEnergy = 0;
+    setMouthTarget(16);
+  }
+
+  function startReactiveMouthAnimation(analyser) {
+    stopFakeMouthAnimation();
+    animating = true;
+    activeAnalyser = analyser;
+    const data = new Uint8Array(analyser.fftSize);
+
+    const tick = () => {
+      if (!animating || activeAnalyser !== analyser) return;
+      analyser.getByteTimeDomainData(data);
+      let peak = 0;
+      for (let i = 0; i < data.length; i++) {
+        peak = Math.max(peak, Math.abs(data[i] - 128));
+      }
+      const normalized = Math.min(1, peak / 42);
+      live2dSpeechEnergy = Math.max(live2dSpeechEnergy * 0.72, normalized);
+      const target = 14 + normalized * 28 + (normalized < 0.08 ? Math.sin(Date.now() / 210) * 1.4 : 0);
+      setMouthTarget(target);
+      reactiveFrame = requestAnimationFrame(tick);
+    };
+
+    reactiveFrame = requestAnimationFrame(tick);
+  }
+
+  function updateClock(ts) {
+    const date = ts ? new Date(ts * 1000) : new Date();
+    statusClockEl.textContent = date.toLocaleTimeString("zh-CN", { hour12: false });
+  }
+
+  function updateStageTrack(stateKey) {
+    const order = ["idle", "listening", "thinking", "answering"];
+    const stateIndex = order.indexOf(stateKey);
+
+    stageSteps.forEach((step) => {
+      step.classList.remove("is-active", "is-done");
+      const stepKey = step.dataset.stage;
+
+      if (stateKey === "error") {
+        if (stepKey === "error") {
+          step.classList.add("is-active");
+        }
+        return;
+      }
+
+      if (stepKey === stateKey) {
+        step.classList.add("is-active");
+        return;
+      }
+
+      const stepIndex = order.indexOf(stepKey);
+      if (stateIndex > 0 && stepIndex >= 0 && stepIndex < stateIndex) {
+        step.classList.add("is-done");
+      }
+    });
+  }
+
+  function applyUiState(stateKey, options = {}) {
+    const config = STATE_COPY[stateKey] || STATE_COPY.idle;
+    shellEl.dataset.state = stateKey;
+    setLive2DVisualMode(stateKey);
+    stateBadgeTextEl.textContent = options.badge || config.badge;
+    statusEl.textContent = options.message || config.message;
+    statusDetailEl.textContent = options.detail || config.detail;
+    updateStageTrack(stateKey);
+    if (options.ts) {
+      updateClock(options.ts);
+    }
+  }
+
+  function setTriggerBusy(isBusy, busyLabel = "录音处理中…") {
+    demoBtn.disabled = isBusy;
+    demoBtn.textContent = isBusy ? busyLabel : "麦克风提问";
+  }
+
+  function formatClock(ts) {
+    if (!ts) return "未更新";
+    return new Date(ts * 1000).toLocaleTimeString("zh-CN", { hour12: false });
+  }
+
+  function questionTypeLabel(value) {
+    return QUESTION_TYPE_LABELS[value] || "实时提问";
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function renderRichText(el, text, { placeholder = "等待内容…", lead = false } = {}) {
+    const normalized = String(text || "").replace(/\r/g, "").trim();
+    if (!normalized) {
+      el.innerHTML = `<p class="placeholder">${escapeHtml(placeholder)}</p>`;
+      return;
+    }
+
+    const lines = normalized.split("\n");
+    const html = [];
+    let paragraphLines = [];
+    let listItems = [];
+    let listTag = null;
+
+    const flushParagraph = () => {
+      if (!paragraphLines.length) return;
+      const className = lead && html.length === 0 ? ' class="lead"' : "";
+      html.push(`<p${className}>${escapeHtml(paragraphLines.join(" "))}</p>`);
+      paragraphLines = [];
+    };
+
+    const flushList = () => {
+      if (!listItems.length || !listTag) return;
+      html.push(`<${listTag} class="rich-list">${listItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</${listTag}>`);
+      listItems = [];
+      listTag = null;
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) {
+        flushParagraph();
+        flushList();
+        continue;
+      }
+
+      const numberedMatch = line.match(/^\d+\.\s+(.+)$/);
+      const bulletMatch = line.match(/^(?:[-*•])\s+(.+)$/);
+
+      if (numberedMatch) {
+        flushParagraph();
+        if (listTag && listTag !== "ol") flushList();
+        listTag = "ol";
+        listItems.push(numberedMatch[1]);
+        continue;
+      }
+
+      if (bulletMatch) {
+        flushParagraph();
+        if (listTag && listTag !== "ul") flushList();
+        listTag = "ul";
+        listItems.push(bulletMatch[1]);
+        continue;
+      }
+
+      flushList();
+      paragraphLines.push(line);
+    }
+
+    flushParagraph();
+    flushList();
+
+    el.innerHTML = html.join("") || `<p class="placeholder">${escapeHtml(placeholder)}</p>`;
+  }
+
+  function payloadAnswerPresentationLabel(payload) {
+    if (payload.no_speech) {
+      return "未听清 · " + formatClock(payload.ts);
+    }
+    if (payload.demo_mode === "offline") {
+      return "离线提示 · " + formatClock(payload.ts);
+    }
+    if (payload.answer_phase === "preview") {
+      return "初步回答 · 正在完善";
+    }
+    if (payload.audio_pending) {
+      return "文字已生成 · 语音准备中";
+    }
+    if (payload.local_audio_playback) {
+      return "本机音频输出 · " + formatClock(payload.ts);
+    }
+    return "实时回答 · " + formatClock(payload.ts);
+  }
+
+  function normalizeAnswerText(value) {
+    return String(value || "")
+      .replace(/[\s\p{P}\p{S}]+/gu, "")
+      .toLowerCase();
+  }
+
+  function dedupeAnswerDetails(answerShort, details) {
+    const shortNorm = normalizeAnswerText(answerShort);
+    const shortPrefix = shortNorm.slice(0, 18);
+
+    return (Array.isArray(details) ? details : [])
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+      .filter((item, index, items) => items.indexOf(item) === index)
+      .filter((item) => {
+        if (!shortNorm) return true;
+        const itemNorm = normalizeAnswerText(item);
+        if (!itemNorm) return false;
+        if (itemNorm === shortNorm) return false;
+        if (shortPrefix.length >= 8 && itemNorm.startsWith(shortPrefix)) return false;
+        if (shortNorm.length >= 12 && shortNorm.includes(itemNorm)) return false;
+        return true;
+      });
+  }
+
+  function buildDisplayAnswer(payload) {
+    const parts = [];
+    const answerShort = String(payload.answer_short || "").trim();
+    const answerFull = dedupeAnswerDetails(answerShort, payload.answer_full);
+    const followUp = String(payload.follow_up || "").trim();
+
+    if (answerShort) {
+      parts.push(answerShort);
+    }
+
+    if (answerFull.length) {
+      parts.push(answerFull.map((item, index) => `${index + 1}. ${item}`).join("\n"));
+    } else if (!answerShort) {
+      const fallbackAnswer = String(payload.answer || "").trim();
+      if (fallbackAnswer) {
+        parts.push(fallbackAnswer);
+      }
+    }
+
+    if (followUp) {
+      parts.push(`想一想：${followUp}`);
+    }
+
+    return parts.join("\n\n");
+  }
+
+  function isPollingPlaybackAllowed() {
+    return !ws || ws.readyState !== WebSocket.OPEN;
+  }
+
+  function refreshSpeechVoices() {
+    if (!("speechSynthesis" in window)) return;
+    speechVoices = window.speechSynthesis.getVoices() || [];
+  }
+
+  function pickSpeechVoice(langPrefix = "zh") {
+    if (!("speechSynthesis" in window)) return null;
+    if (!speechVoices.length) {
+      refreshSpeechVoices();
+    }
+
+    const normalizedPrefix = String(langPrefix || "zh").toLowerCase();
+    const candidates = speechVoices.filter((voice) =>
+      String(voice.lang || "").toLowerCase().startsWith(normalizedPrefix)
+    );
+
+    if (!candidates.length) return null;
+
+    const preferred = candidates.find((voice) => {
+      const name = String(voice.name || "").toLowerCase();
+      return PREFERRED_ZH_VOICE_HINTS.some((hint) => name.includes(hint));
+    });
+
+    return preferred || candidates[0] || null;
+  }
+
+  function clearTranscriptPanels() {
+    renderRichText(qEl, "", { placeholder: "等待识别到的问题…", lead: true });
+    renderRichText(aEl, "", { placeholder: "等待老师回答…" });
+    questionMetaEl.textContent = "实时提问";
+    answerMetaEl.textContent = "等待本轮回答";
+  }
+
+  function showQuestionPreview(question, ts = null) {
+    renderRichText(qEl, question || "", {
+      placeholder: "等待识别到的问题…",
+      lead: true,
+    });
+    renderRichText(aEl, "", {
+      placeholder: "正在思考，请稍候…",
+    });
+    questionMetaEl.textContent = "已识别问题";
+    answerMetaEl.textContent = "正在生成回答";
+    if (ts) {
+      updateClock(ts);
+    }
+  }
+
+  function showQuestionInterim(finalText, interimText = "") {
+    const finalPart = String(finalText || "").trim();
+    const interimPart = String(interimText || "").trim();
+    const combined = [finalPart, interimPart].filter(Boolean).join("");
+
+    renderRichText(qEl, combined, {
+      placeholder: "请开始提问…",
+      lead: true,
+    });
+    renderRichText(aEl, "", {
+      placeholder: "我在边听边识别，请继续说完问题…",
+    });
+    questionMetaEl.textContent = interimPart ? "实时识别中" : "已识别问题";
+    answerMetaEl.textContent = "等待最终问题";
+  }
+
+  function stopQuestionRecognition() {
+    const recognition = activeQuestionRecognition;
+    activeQuestionRecognition = null;
+    if (!recognition) return;
+    questionRecognitionSessionId += 1;
+    try {
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.abort();
+    } catch (_) {}
+  }
+
+  async function fetchLatestPayload() {
+    const res = await fetch("/latest/answer.json?_=" + Date.now());
+    return res.json();
+  }
+
+  function payloadSyncKey(payload) {
+    const ts = Number(payload?.ts || 0);
+    return [
+      ts,
+      payload?.answer_phase || "final",
+      payload?.audio_pending ? 1 : 0,
+      payload?.local_audio_playback ? 1 : 0,
+      payload?.tts_error ? 1 : 0,
+    ].join(":");
+  }
+
+  function renderPayload(payload) {
+    renderRichText(qEl, payload.question || payload.original_question || "", {
+      placeholder: "等待识别到的问题…",
+      lead: true,
+    });
+
+    const displayAnswer = buildDisplayAnswer(payload);
+    renderRichText(aEl, displayAnswer, {
+      placeholder: "等待老师回答…",
+      lead: true,
+    });
+
+    questionMetaEl.textContent = questionTypeLabel(payload.question_type);
+    answerMetaEl.textContent = payloadAnswerPresentationLabel(payload);
+    updateClock(payload.ts);
+  }
+
+  async function ensureAudioContextUnlocked() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      audioUnlocked = true;
+      return null;
+    }
+
+    if (!audioContext) {
+      audioContext = new AudioContextClass();
+    }
+
+    try {
+      if (audioContext.state === "suspended") {
+        await audioContext.resume();
+      }
+    } catch (_) {}
+
+    if (audioContext.state === "running") {
+      audioUnlocked = true;
+    }
+
+    return audioContext;
+  }
+
+  function stopCurrentAudio() {
+    if (activeSource) {
+      const source = activeSource;
+      activeSource = null;
+      activeAnalyser = null;
+      try {
+        source.onended = null;
+        source.stop(0);
+      } catch (_) {}
+      try {
+        source.disconnect();
+      } catch (_) {}
+    }
+
+    if (activeAudio) {
+      const audio = activeAudio;
+      activeAudio = null;
+      audio.onended = null;
+      audio.onerror = null;
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeAttribute("src");
+      try {
+        audio.load();
+      } catch (_) {}
+    }
+  }
+
+  function stopSpeechPlayback(role = null) {
+    if (!("speechSynthesis" in window)) return;
+    if (role && activeSpeechRole && activeSpeechRole !== role) return;
+    window.speechSynthesis.cancel();
+    activeSpeechUtterance = null;
+    activeSpeechRole = null;
+  }
+
+  function stopAcknowledgementSpeech() {
+    stopSpeechPlayback("ack");
+  }
+
+  function stopAnswerSpeech() {
+    stopSpeechPlayback("answer");
+  }
+
+  function stopAnswerPlaybackState() {
+    playbackSessionId += 1;
+    stopCurrentAudio();
+    stopAnswerSpeech();
+    answerPlaybackInFlight = false;
+  }
+
+  function speakAcknowledgement(text) {
+    if (!text || !("speechSynthesis" in window)) return;
+    stopAcknowledgementSpeech();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "zh-CN";
+    utterance.voice = pickSpeechVoice("zh");
+    utterance.rate = 1.0;
+    utterance.pitch = 1.05;
+    activeSpeechUtterance = utterance;
+    activeSpeechRole = "ack";
+    utterance.onstart = () => startSyntheticSpeechAnimation("ack");
+    utterance.onend = () => {
+      if (activeSpeechUtterance === utterance) {
+        activeSpeechUtterance = null;
+        activeSpeechRole = null;
+      }
+      stopFakeMouthAnimation();
+    };
+    utterance.onerror = () => {
+      if (activeSpeechUtterance === utterance) {
+        activeSpeechUtterance = null;
+        activeSpeechRole = null;
+      }
+      stopFakeMouthAnimation();
+    };
+    window.speechSynthesis.speak(utterance);
+  }
+
+  async function speakAnswerFallback(text) {
+    if (!text || !("speechSynthesis" in window)) {
+      throw new Error("speech synthesis unavailable");
+    }
+
+    stopAnswerPlaybackState();
+    stopAcknowledgementSpeech();
+    const sessionId = ++playbackSessionId;
+    answerPlaybackInFlight = true;
+
+    return new Promise((resolve, reject) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "zh-CN";
+      utterance.voice = pickSpeechVoice("zh");
+      utterance.rate = 1.0;
+      utterance.pitch = 1.05;
+      activeSpeechUtterance = utterance;
+      activeSpeechRole = "answer";
+
+      utterance.onstart = () => {
+        if (sessionId !== playbackSessionId) return;
+        applyUiState("answering", {
+          message: "开始回答… / Answering...",
+          detail: "浏览器语音回退已启用，正在朗读最新回答。",
+        });
+        startSyntheticSpeechAnimation("answer");
+      };
+      utterance.onend = () => {
+        if (activeSpeechUtterance === utterance) {
+          activeSpeechUtterance = null;
+          activeSpeechRole = null;
+        }
+        if (sessionId !== playbackSessionId) {
+          resolve();
+          return;
+        }
+        finishAnswering();
+        resolve();
+      };
+      utterance.onerror = (event) => {
+        if (activeSpeechUtterance === utterance) {
+          activeSpeechUtterance = null;
+          activeSpeechRole = null;
+        }
+        stopFakeMouthAnimation();
+        answerPlaybackInFlight = false;
+        reject(new Error(event.error || "speech synthesis failed"));
+      };
+
+      window.speechSynthesis.speak(utterance);
+    });
+  }
+
+  function setIdleState() {
+    stopAcknowledgementSpeech();
+    stopFakeMouthAnimation();
+    applyUiState("idle");
+    setTriggerBusy(false);
+  }
+
+  function finishAnswering() {
+    stopAnswerPlaybackState();
+    pendingAnswerTs = null;
+    pendingAnswerPayload = null;
+    setIdleState();
+  }
+
+  async function refreshQA() {
+    const payload = await fetchLatestPayload();
+    renderPayload(payload);
+    return payload;
+  }
+
+  async function syncLatestAnswer({ allowPlayback = false } = {}) {
+    const payload = await fetchLatestPayload();
+    const ts = Number(payload.ts || 0);
+    const syncKey = payloadSyncKey(payload);
+
+    if (!initialPayloadLoaded) {
+      latestSeenTs = ts;
+      latestPayloadSyncKey = syncKey;
+      initialPayloadLoaded = true;
+      return payload;
+    }
+
+    if (ts < latestSeenTs || (ts === latestSeenTs && syncKey === latestPayloadSyncKey)) {
+      return payload;
+    }
+
+    latestSeenTs = Math.max(latestSeenTs, ts);
+    latestPayloadSyncKey = syncKey;
+    renderPayload(payload);
+    if (payload.audio_pending) {
+      pendingAnswerTs = ts;
+      pendingAnswerPayload = payload;
+      applyUiState("answering", {
+        message: "回答已生成 / Answer ready",
+        detail: "字幕已更新，正在准备语音输出。",
+        ts,
+      });
+      setTriggerBusy(true, "老师回答中…");
+      return payload;
+    }
+
+    if (payload.local_audio_playback) {
+      answerPlaybackInFlight = true;
+      pendingAnswerTs = ts;
+      pendingAnswerPayload = payload;
+      applyUiState("answering", {
+        detail: "后端正在本机播放最新回答音频。",
+        ts,
+      });
+      startSyntheticSpeechAnimation("answer");
+      return payload;
+    }
+
+    if (!allowPlayback || answerPlaybackInFlight || !isPollingPlaybackAllowed()) {
+      return payload;
+    }
+
+    answerPlaybackInFlight = true;
+    pendingAnswerTs = ts;
+    pendingAnswerPayload = payload;
+    try {
+      await playLatestAnswerAudio(ts);
+      pendingAnswerTs = null;
+      pendingAnswerPayload = null;
+    } catch (err) {
+      console.error("polled audio playback failed", err);
+      try {
+        await speakAnswerFallback(payload.spoken_answer || payload.answer_short || payload.answer);
+        pendingAnswerTs = null;
+        pendingAnswerPayload = null;
+      } catch (fallbackErr) {
+        console.error("speech fallback failed", fallbackErr);
+        answerPlaybackInFlight = false;
+        applyUiState("error", {
+          message: "音频未开始播放 / Playback blocked",
+          detail: "浏览器阻止了自动播放；本机播放不可用时，请点击页面后再试。",
+        });
+        setTriggerBusy(false);
+      }
+    }
+    return payload;
+  }
+
+  function startAnswerPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(async () => {
+      try {
+        await syncLatestAnswer({ allowPlayback: isPollingPlaybackAllowed() });
+      } catch (err) {
+        console.error("poll latest answer failed", err);
+      }
+    }, 500);
+  }
+
+  function scheduleWSReconnect() {
+    if (wsReconnectTimer) return;
+    wsReconnectTimer = setTimeout(() => {
+      wsReconnectTimer = null;
+      setupWS();
+    }, wsReconnectDelayMs);
+    wsReconnectDelayMs = Math.min(wsReconnectDelayMs * 2, 10000);
+  }
+
+  async function playLatestAnswerAudioElement(ts) {
+    stopAnswerPlaybackState();
+    const sessionId = ++playbackSessionId;
+    answerPlaybackInFlight = true;
+    return new Promise((resolve, reject) => {
+      const audio = new Audio("/latest/answer.mp3?_=" + (ts || Date.now()));
+      audio.preload = "auto";
+      activeAudio = audio;
+
+      audio.onended = () => {
+        if (sessionId !== playbackSessionId) {
+          resolve();
+          return;
+        }
+        finishAnswering();
+        resolve();
+      };
+
+      audio.onerror = () => {
+        stopFakeMouthAnimation();
+        stopCurrentAudio();
+        answerPlaybackInFlight = false;
+        reject(new Error("answer.mp3 unavailable"));
+      };
+
+      audio.play()
+        .then(() => {
+          applyUiState("answering", {
+            message: "开始回答… / Answering...",
+            detail: "正在通过浏览器播放最新回答音频。",
+          });
+          startSyntheticSpeechAnimation("answer");
+        })
+        .catch((err) => {
+          stopCurrentAudio();
+          reject(err);
+        });
+    });
+  }
+
+  async function playLatestAnswerAudio(ts) {
+    stopAnswerPlaybackState();
+    const sessionId = ++playbackSessionId;
+    answerPlaybackInFlight = true;
+
+    const ctx = await ensureAudioContextUnlocked();
+    if (!audioUnlocked) {
+      answerPlaybackInFlight = false;
+      throw new Error("audio not unlocked");
+    }
+
+    if (ctx && ctx.state === "running") {
+      const res = await fetch("/latest/answer.mp3?_=" + (ts || Date.now()));
+      if (!res.ok) {
+        answerPlaybackInFlight = false;
+        throw new Error("answer.mp3 unavailable");
+      }
+
+      const bytes = await res.arrayBuffer();
+      const buffer = await ctx.decodeAudioData(bytes.slice(0));
+
+      return new Promise((resolve, reject) => {
+        const source = ctx.createBufferSource();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        source.buffer = buffer;
+        source.connect(analyser);
+        analyser.connect(ctx.destination);
+
+        activeSource = source;
+        activeAnalyser = analyser;
+        applyUiState("answering", {
+          message: "开始回答… / Answering...",
+          detail: "正在通过浏览器播放最新回答音频。",
+        });
+        startReactiveMouthAnimation(analyser);
+
+        source.onended = () => {
+          if (sessionId !== playbackSessionId) {
+            resolve();
+            return;
+          }
+          if (activeSource === source) {
+            activeSource = null;
+            activeAnalyser = null;
+          }
+          finishAnswering();
+          resolve();
+        };
+
+        try {
+          source.start(0);
+        } catch (err) {
+          stopCurrentAudio();
+          answerPlaybackInFlight = false;
+          reject(err);
+        }
+      });
+    }
+
+    return playLatestAnswerAudioElement(ts);
+  }
+
+  async function handleAnswerTextReady(msg) {
+    const payload = await refreshQA();
+    latestSeenTs = Number(payload.ts || latestSeenTs || 0);
+    latestPayloadSyncKey = payloadSyncKey(payload);
+    pendingAnswerTs = Number(msg.ts || latestSeenTs || Date.now());
+    pendingAnswerPayload = payload;
+    answerPlaybackInFlight = false;
+
+    applyUiState("answering", {
+      message: msg.preview ? "初步回答已生成 / Draft answer ready" : "回答已生成 / Answer ready",
+      detail: msg.preview ? "先显示一版快速回答，正在生成完整答案和语音。" : "字幕已更新，正在准备语音输出。",
+      ts: latestSeenTs,
+    });
+    setTriggerBusy(true, "老师回答中…");
+  }
+
+  async function handleAnswerReady(msg) {
+    const answerTs = Number(msg.ts || 0);
+    if (answerTs && answerTs === handledAnswerReadyTs && answerPlaybackInFlight) {
+      return;
+    }
+
+    const payload = await refreshQA();
+    latestSeenTs = Number(payload.ts || latestSeenTs || 0);
+    latestPayloadSyncKey = payloadSyncKey(payload);
+    handledAnswerReadyTs = Number(payload.ts || answerTs || handledAnswerReadyTs || 0);
+
+    if (msg.no_speech || payload.no_speech) {
+      answerPlaybackInFlight = false;
+      pendingAnswerTs = null;
+      pendingAnswerPayload = null;
+      applyUiState("idle", {
+        message: "没有听清，请再说一次 / I didn't catch that.",
+        detail: "唤醒成功，但录音里没有识别到有效问题。请在提示后直接提问。",
+        ts: latestSeenTs,
+      });
+      setTriggerBusy(false);
+      return;
+    }
+    pendingAnswerTs = Number(msg.ts || latestSeenTs || Date.now());
+    pendingAnswerPayload = payload;
+
+    if (msg.local_audio_playback || payload.local_audio_playback) {
+      stopAnswerPlaybackState();
+      answerPlaybackInFlight = true;
+      applyUiState("answering", {
+        detail: "后端正在本机播放最新回答音频。",
+        ts: pendingAnswerTs,
+      });
+      startSyntheticSpeechAnimation("answer");
+      return;
+    }
+
+    if (msg.audio_available) {
+      try {
+        await playLatestAnswerAudio(msg.ts);
+        pendingAnswerTs = null;
+        pendingAnswerPayload = null;
+        return;
+      } catch (err) {
+        console.error("audio playback failed", err);
+        try {
+          await speakAnswerFallback(payload.spoken_answer || payload.answer_short || payload.answer);
+          pendingAnswerTs = null;
+          pendingAnswerPayload = null;
+          return;
+        } catch (fallbackErr) {
+          console.error("speech fallback failed", fallbackErr);
+          answerPlaybackInFlight = false;
+          applyUiState("error", {
+            message: "音频播放失败 / Playback failed",
+            detail: "文本结果仍然可见，请检查浏览器声音权限或本机音频输出。",
+          });
+          setTriggerBusy(false);
+          return;
+        }
+      }
+    }
+
+    answerPlaybackInFlight = false;
+    const ttsError = payload.tts_error || msg.error || "音频不可用 / Audio unavailable";
+    applyUiState("error", {
+      message: "当前只显示文本结果",
+      detail: ttsError,
+    });
+    setTriggerBusy(false);
+  }
+
+  async function submitQuestionDirect(question, { triggerSource = "manual:browser_speech", asrProvider = "browser_speech" } = {}) {
+    const normalizedQuestion = String(question || "").trim();
+    if (!normalizedQuestion) {
+      throw new Error("question is empty");
+    }
+
+    const res = await fetch("/demo/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: normalizedQuestion,
+        trigger_source: triggerSource,
+        asr_provider: asrProvider,
+      }),
+    });
+    const payload = await res.json();
+    if (!res.ok || !payload.ok) {
+      throw new Error(payload.error || `HTTP ${res.status}`);
+    }
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      await handleAnswerReady({
+        ts: Date.now(),
+        audio_available: payload.audio_available,
+        local_audio_playback: payload.local_audio_playback,
+      });
+    }
+
+    return payload;
+  }
+
+  async function runBackendVoiceFlow() {
+    setTriggerBusy(true);
+    stopFakeMouthAnimation();
+    stopAnswerPlaybackState();
+    stopQuestionRecognition();
+    stopAcknowledgementSpeech();
+    clearTranscriptPanels();
+    applyUiState("listening", {
+      message: "准备录音… / Preparing microphone...",
+      detail: "正在请求后端启动真实语音链路。",
+    });
+
+    try {
+      await ensureAudioContextUnlocked();
+      const res = await fetch("/demo/trigger", { method: "POST" });
+      const payload = await res.json();
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.error || `HTTP ${res.status}`);
+      }
+
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        await handleAnswerReady({
+          ts: Date.now(),
+          audio_available: payload.audio_available,
+          local_audio_playback: payload.local_audio_playback,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      applyUiState("error", {
+        message: "流程失败 / Pipeline failed",
+        detail: err.message || "未知错误",
+      });
+      setTriggerBusy(false);
+    }
+  }
+
+  async function startBrowserQuestionFlow() {
+    if (!browserSpeechRecognitionSupported) {
+      await runBackendVoiceFlow();
+      return;
+    }
+
+    stopFakeMouthAnimation();
+    stopAnswerPlaybackState();
+    stopAcknowledgementSpeech();
+    stopQuestionRecognition();
+    clearTranscriptPanels();
+    setTriggerBusy(true, "实时识别中…");
+    applyUiState("listening", {
+      message: "实时识别中… / Live transcribing...",
+      detail: "请直接说出问题，字幕会边说边显示，停顿后自动提交。",
+    });
+
+    const sessionId = ++questionRecognitionSessionId;
+    let finalTranscript = "";
+    let captureResolved = false;
+
+    const recognition = new SpeechRecognitionClass();
+    activeQuestionRecognition = recognition;
+    recognition.lang = "zh-CN";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 1;
+
+    const fallbackToBackend = async (message, detail) => {
+      if (captureResolved) return;
+      captureResolved = true;
+      questionRecognitionSessionId += 1;
+      activeQuestionRecognition = null;
+      applyUiState("listening", {
+        message,
+        detail,
+      });
+      await runBackendVoiceFlow();
+    };
+
+    recognition.onresult = (event) => {
+      if (sessionId !== questionRecognitionSessionId) return;
+
+      let interimTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const text = String(result[0]?.transcript || "").trim();
+        if (!text) continue;
+        if (result.isFinal) {
+          finalTranscript = `${finalTranscript}${text}`.trim();
+        } else {
+          interimTranscript += text;
+        }
+      }
+      showQuestionInterim(finalTranscript, interimTranscript);
+    };
+
+    recognition.onerror = async (event) => {
+      if (sessionId !== questionRecognitionSessionId) return;
+      const errorCode = event.error || "unknown";
+      console.error("browser speech recognition failed", errorCode);
+      await fallbackToBackend("浏览器实时识别不可用", "正在回退到后端录音识别。");
+    };
+
+    recognition.onend = async () => {
+      if (sessionId !== questionRecognitionSessionId) return;
+      if (captureResolved) return;
+      captureResolved = true;
+      activeQuestionRecognition = null;
+
+      const question = String(finalTranscript || "").trim();
+      if (!question) {
+        captureResolved = false;
+        await fallbackToBackend("没有识别到完整问题", "正在回退到后端录音识别。");
+        return;
+      }
+
+      showQuestionPreview(question, Math.floor(Date.now() / 1000));
+      applyUiState("thinking", {
+        message: "问题已识别 / Question recognized",
+        detail: "已跳过整段录音上传，正在直接生成回答。",
+      });
+
+      try {
+        await submitQuestionDirect(question);
+      } catch (err) {
+        console.error(err);
+        applyUiState("error", {
+          message: "流程失败 / Pipeline failed",
+          detail: err.message || "未知错误",
+        });
+        setTriggerBusy(false);
+      }
+    };
+
+    try {
+      await ensureAudioContextUnlocked();
+      recognition.start();
+    } catch (err) {
+      console.error("browser speech recognition start failed", err);
+      await fallbackToBackend("浏览器实时识别启动失败", "正在回退到后端录音识别。");
+    }
+  }
+
+  demoBtn.addEventListener("click", startBrowserQuestionFlow);
+
+  async function unlockAudioFromGesture() {
+    try {
+      await ensureAudioContextUnlocked();
+      if (!audioUnlocked) return;
+      if (pendingAnswerTs && pendingAnswerPayload && !answerPlaybackInFlight) {
+        try {
+          await playLatestAnswerAudio(pendingAnswerTs);
+          pendingAnswerTs = null;
+          pendingAnswerPayload = null;
+        } catch (err) {
+          console.error("gesture playback failed", err);
+          try {
+            await speakAnswerFallback(
+              pendingAnswerPayload.spoken_answer
+                || pendingAnswerPayload.answer_short
+                || pendingAnswerPayload.answer
+            );
+            pendingAnswerTs = null;
+            pendingAnswerPayload = null;
+          } catch (fallbackErr) {
+            console.error("gesture fallback failed", fallbackErr);
+            answerPlaybackInFlight = false;
+          }
+        }
+      }
+    } catch (err) {
+      console.error("audio unlock failed", err);
+    }
+  }
+
+  document.addEventListener("pointerdown", unlockAudioFromGesture, { passive: true });
+  document.addEventListener("keydown", unlockAudioFromGesture);
+
+  mouthBtn.addEventListener("click", async () => {
+    try {
+      await ensureAudioContextUnlocked();
+    } catch (err) {
+      console.error("audio unlock failed", err);
+    }
+    applyUiState("answering", {
+      message: "测试嘴型动画 / Avatar motion test",
+      detail: "仅测试当前临时头像的嘴型表现，不触发真实语音链路。",
+    });
+    startSyntheticSpeechAnimation("answer");
+    await new Promise((resolve) => setTimeout(resolve, 2800));
+    finishAnswering();
+  });
+
+  function setupWS() {
+    try {
+      if (ws) {
+        try { ws.close(); } catch (_) {}
+      }
+      ws = new WebSocket(`ws://${location.host}/ws`);
+      ws.onopen = async () => {
+        console.log("ws open");
+        wsReconnectDelayMs = 1000;
+        if (wsReconnectTimer) {
+          clearTimeout(wsReconnectTimer);
+          wsReconnectTimer = null;
+        }
+        try {
+          await syncLatestAnswer({ allowPlayback: false });
+        } catch (err) {
+          console.error("initial ws sync failed", err);
+        }
+      };
+      ws.onmessage = async (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "state") {
+          stopFakeMouthAnimation();
+          stopCurrentAudio();
+          setTriggerBusy(true);
+
+          const rawState = msg.state === "wake_detected" ? "listening" : (msg.state || "idle");
+          const detail = msg.state === "wake_detected"
+            ? "已检测到唤醒词，正在准备录音。"
+            : undefined;
+
+          if (rawState === "listening") {
+            clearTranscriptPanels();
+          }
+
+          applyUiState(rawState, {
+            message: msg.text || STATE_COPY[rawState]?.message,
+            detail,
+          });
+
+          if (msg.speak) {
+            speakAcknowledgement(msg.speak);
+          } else if (msg.animate_for_ms) {
+            startSyntheticSpeechAnimation("ack");
+            setTimeout(() => {
+              if (!answerPlaybackInFlight) {
+                stopFakeMouthAnimation();
+              }
+            }, Number(msg.animate_for_ms) || 900);
+          } else {
+            stopAcknowledgementSpeech();
+          }
+        }
+        if (msg.type === "answer_ready") {
+          stopAcknowledgementSpeech();
+          await handleAnswerReady(msg);
+        }
+        if (msg.type === "answer_text_ready") {
+          stopAcknowledgementSpeech();
+          await handleAnswerTextReady(msg);
+        }
+        if (msg.type === "question_ready") {
+          showQuestionPreview(msg.question, Number(msg.ts || 0));
+          applyUiState("thinking", {
+            message: "问题已识别 / Question recognized",
+            detail: "正在生成最终回答。",
+            ts: Number(msg.ts || 0),
+          });
+        }
+        if (msg.type === "local_audio_finished") {
+          if (Number(msg.ts || 0) === Number(latestSeenTs || 0)) {
+            finishAnswering();
+          }
+        }
+        if (msg.type === "playback_error") {
+          console.error("local playback failed", msg);
+          if (pendingAnswerTs && pendingAnswerPayload) {
+            try {
+              await playLatestAnswerAudio(pendingAnswerTs);
+              pendingAnswerTs = null;
+              pendingAnswerPayload = null;
+            } catch (err) {
+              console.error("browser fallback after local playback failure failed", err);
+              applyUiState("error", {
+                message: "回答音频播放失败",
+                detail: msg.text || "本机音频和浏览器回退播放都失败了。",
+              });
+              setTriggerBusy(false);
+            }
+          } else {
+            applyUiState("error", {
+              message: "回答音频播放失败",
+              detail: msg.text || "本机音频播放失败。",
+            });
+            setTriggerBusy(false);
+          }
+        }
+        if (msg.type === "error") {
+          stopFakeMouthAnimation();
+          stopAnswerPlaybackState();
+          stopAcknowledgementSpeech();
+          applyUiState("error", {
+            message: "流程失败 / Pipeline failed",
+            detail: msg.text || "未知错误",
+          });
+          setTriggerBusy(false);
+        }
+      };
+      ws.onerror = (err) => {
+        console.error("ws error", err);
+      };
+      ws.onclose = () => {
+        console.log("ws closed");
+        scheduleWSReconnect();
+      };
+    } catch (err) {
+      console.error(err);
+      scheduleWSReconnect();
+    }
+  }
+
+  updateClock();
+  refreshSpeechVoices();
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.onvoiceschanged = refreshSpeechVoices;
+  }
+  clearTranscriptPanels();
+  applyUiState("idle");
+  startAnswerPolling();
+  setupWS();
+  syncLatestAnswer({ allowPlayback: false });
+
+  // ===== Live2D Haru Initialization =====
+  const LIVE2D_MODEL_PATH = '/static/assets/live2d/chitose/chitose.model.json';
+  let live2dApp = null;
+  let live2dModel = null;
+  let live2dCanvas = null;
+  let live2dBlackFrameFallbackTimer = null;
+  const avatarEl = document.querySelector('.avatar-render-layer');
+  const tempFace = document.querySelector('.face');
+
+  function showFallbackFace(reason) {
+    if (tempFace) {
+      tempFace.style.display = '';
+    }
+    if (live2dCanvas) {
+      live2dCanvas.style.display = 'none';
+    }
+    console.warn('Live2D fallback face enabled: ' + reason);
+  }
+
+  function hideFallbackFace() {
+    if (tempFace) {
+      tempFace.style.display = 'none';
+    }
+    if (live2dCanvas) {
+      live2dCanvas.style.display = '';
+    }
+  }
+
+  function detectBlackCanvasFrame() {
+    if (!live2dApp?.renderer?.gl || !live2dCanvas) return false;
+
+    try {
+      const gl = live2dApp.renderer.gl;
+      const sampleX = Math.max(0, Math.floor(live2dCanvas.width / 2));
+      const sampleY = Math.max(0, Math.floor(live2dCanvas.height / 2));
+      const pixel = new Uint8Array(4);
+      gl.readPixels(sampleX, sampleY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+
+      const isOpaqueBlack = pixel[0] < 8 && pixel[1] < 8 && pixel[2] < 8 && pixel[3] > 240;
+      console.log('Live2D sample pixel:', Array.from(pixel));
+      return isOpaqueBlack;
+    } catch (err) {
+      console.warn('Live2D black-frame detection failed:', err.message);
+      return false;
+    }
+  }
+
+  async function initLive2D() {
+    console.log('Live2D load started: ' + LIVE2D_MODEL_PATH);
+    try {
+      const avatarWidth = Math.round(avatarEl?.clientWidth || 320);
+      const avatarHeight = Math.round(avatarEl?.clientHeight || 320);
+
+      live2dCanvas = document.createElement('canvas');
+      live2dCanvas.id = 'live2d-canvas';
+      live2dCanvas.width = avatarWidth;
+      live2dCanvas.height = avatarHeight;
+      live2dCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:transparent;pointer-events:none;z-index:2;';
+      avatarEl.appendChild(live2dCanvas);
+
+      live2dApp = new PIXI.Application({
+        view: live2dCanvas,
+        width: avatarWidth,
+        height: avatarHeight,
+        backgroundAlpha: 0,
+        useContextAlpha: true,
+        premultipliedAlpha: false,
+        preserveDrawingBuffer: true,
+        clearBeforeRender: true,
+        antialias: true,
+        autoStart: true,
+        sharedTicker: true,
+      });
+      if (live2dApp.renderer?.background) {
+        live2dApp.renderer.background.alpha = 0;
+      }
+      if (live2dApp.renderer?.gl) {
+        const attrs = live2dApp.renderer.gl.getContextAttributes?.();
+        console.log('Live2D WebGL attrs:', attrs);
+        live2dApp.renderer.gl.clearColor(0, 0, 0, 0);
+        live2dApp.renderer.gl.clear(live2dApp.renderer.gl.COLOR_BUFFER_BIT);
+      }
+
+      live2dModel = await PIXI.live2d.Live2DModel.from(LIVE2D_MODEL_PATH, {
+        autoInteract: false,
+      });
+      live2dModel.update(16);
+      live2dModel.anchor.set(0.5, 0.5);
+      applyTeacherLive2DPresentation(live2dModel);
+      registerLive2DFrameLoop();
+
+      const bounds = live2dModel.getLocalBounds();
+      const modelWidth = live2dModel.internalModel?.width || bounds.width || avatarWidth;
+      const modelHeight = live2dModel.internalModel?.height || bounds.height || avatarHeight;
+      const boundsWidth = Math.max(modelWidth, 1);
+      const boundsHeight = Math.max(modelHeight, 1);
+      const fitScale = Math.min((avatarWidth * 0.84) / boundsWidth, (avatarHeight * 0.92) / boundsHeight);
+      const framingScale = fitScale * LIVE2D_TEACHER_PRESENTATION.framingScaleMultiplier;
+
+      live2dModel.scale.set(framingScale);
+      live2dModel.position.set(
+        avatarWidth * LIVE2D_TEACHER_PRESENTATION.xRatio,
+        avatarHeight * LIVE2D_TEACHER_PRESENTATION.yRatio
+      );
+      live2dApp.stage.addChild(live2dModel);
+      live2dApp.render();
+      hideFallbackFace();
+      setLive2DMouthOpen(0);
+
+      if (live2dBlackFrameFallbackTimer) {
+        clearTimeout(live2dBlackFrameFallbackTimer);
+      }
+      live2dBlackFrameFallbackTimer = setTimeout(() => {
+        if (detectBlackCanvasFrame()) {
+          showFallbackFace('opaque black frame detected after first render');
+        }
+      }, 250);
+
+      console.log('Live2D load success: ' + LIVE2D_MODEL_PATH);
+    } catch (err) {
+      showFallbackFace('initialization error');
+      console.error('Live2D load failure: ' + err.message);
+      console.error('Failing path: ' + LIVE2D_MODEL_PATH);
+    }
+  }
+
+  // Initialize Live2D
+  if (window.PIXI && PIXI.live2d) {
+    initLive2D();
+  }
+</script>
+</body>
+</html>

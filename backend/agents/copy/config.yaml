@@ -1,0 +1,17 @@
+# Copy Agent - 文案改写 Agent 配置
+
+name: copy_agent
+description: 将已有文案进行二创改写，保持口语化、强开头
+
+# 独立 memory 路径
+memory_dir: ../data/copy/memory
+workspace_dir: ../data/copy/workspace
+
+# 模型配置
+model:
+  provider: openai
+  model: gpt-4o
+
+system_prompt_file: system_prompt.txt
+
+state_file: ../../latest/copy_state.json

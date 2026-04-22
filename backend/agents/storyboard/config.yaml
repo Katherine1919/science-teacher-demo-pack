@@ -1,0 +1,17 @@
+# Storyboard Agent - 分镜/提示词 Agent 配置
+
+name: storyboard_agent
+description: 把文案拆成分镜，生成图片/视频提示词
+
+# 独立 memory 路径
+memory_dir: ../data/storyboard/memory
+workspace_dir: ../data/storyboard/workspace
+
+# 模型配置
+model:
+  provider: openai
+  model: gpt-4o
+
+system_prompt_file: system_prompt.txt
+
+state_file: ../../latest/storyboard_state.json

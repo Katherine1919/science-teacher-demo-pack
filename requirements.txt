@@ -1,0 +1,9 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+openai>=1.30
+httpx>=0.23
+edge-tts>=6.1
+numpy>=2.0
+openwakeword>=0.6
+pytest>=8.0
+sounddevice>=0.5

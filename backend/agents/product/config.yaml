@@ -1,0 +1,19 @@
+# Product Agent - 选品/研究 Agent 配置
+
+name: product_agent
+description: 分析爆品、需求、人群、平台适配，输出选题建议
+
+# 独立 memory 路径（避免串味）
+memory_dir: ../data/product/memory
+workspace_dir: ../data/product/workspace
+
+# 模型配置（复用现有）
+model:
+  provider: openai  # 可切换
+  model: gpt-4o
+
+# System prompt 文件
+system_prompt_file: system_prompt.txt
+
+# 运行时状态文件
+state_file: ../../latest/product_state.json
